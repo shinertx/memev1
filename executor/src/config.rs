@@ -1,0 +1,45 @@
+// executor/src/config.rs
+use lazy_static::lazy_static;
+use std::env;
+
+// executor/src/config.rs
+use lazy_static::lazy_static;
+use std::env;
+
+pub struct Config {
+    pub paper_trading_mode: bool,
+    pub jito_auth_keypair_path: String,
+    pub solana_rpc_url: String,
+    pub jito_rpc_url: String,
+    pub signer_url: String,
+    pub global_max_position_usd: f64,
+    pub portfolio_stop_loss_percent: f64,
+    pub jupiter_api_url: String,
+    pub slippage_bps: u16,
+    pub jito_tip_lamports: u64,
+    pub database_path: String,
+    pub redis_url: String,
+}
+
+impl Config {
+    fn load() -> Self {
+        Self {
+            paper_trading_mode: env::var("PAPER_TRADING_MODE").unwrap_or_else(|_| "true".to_string()) == "true",
+            jito_auth_keypair_path: env::var("JITO_AUTH_KEYPAIR_FILENAME").expect("JITO_AUTH_KEYPAIR_FILENAME must be set"),
+            solana_rpc_url: env::var("SOLANA_RPC_URL").expect("SOLANA_RPC_URL must be set"),
+            jito_rpc_url: env::var("JITO_RPC_URL").expect("JITO_RPC_URL must be set"),
+            signer_url: env::var("SIGNER_URL").expect("SIGNER_URL must be set"),
+            global_max_position_usd: env::var("GLOBAL_MAX_POSITION_USD").expect("GLOBAL_MAX_POSITION_USD must be set").parse().unwrap(),
+            portfolio_stop_loss_percent: env::var("PORTFOLIO_STOP_LOSS_PERCENT").expect("PORTFOLIO_STOP_LOSS_PERCENT must be set").parse().unwrap(),
+            jupiter_api_url: env::var("JUPITER_API_URL").expect("JUPITER_API_URL must be set"),
+            slippage_bps: env::var("SLIPPAGE_BPS").expect("SLIPPAGE_BPS must be set").parse().unwrap(),
+            jito_tip_lamports: env::var("JITO_TIP_LAMPORTS").expect("JITO_TIP_LAMPORTS must be set").parse().unwrap(),
+            database_path: env::var("DATABASE_PATH").expect("DATABASE_PATH must be set"),
+            redis_url: env::var("REDIS_URL").expect("REDIS_URL must be set"),
+        }
+    }
+}
+
+lazy_static! {
+    pub static ref CONFIG: Config = Config::load();
+}

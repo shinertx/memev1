@@ -1,0 +1,84 @@
+# MemeSnipe v17-Pro (Patched) - Apex Predator Docker Compose
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  signer:
+    build: { context: ., dockerfile: signer/Dockerfile }
+    restart: unless-stopped
+    environment:
+      - RUST_LOG=${LOG_LEVEL:-info}
+      - WALLET_KEYPAIR_PATH=/app/wallet/${WALLET_KEYPAIR_FILENAME}
+    volumes:
+      - ./${WALLET_KEYPAIR_FILENAME}:/app/wallet/${WALLET_KEYPAIR_FILENAME}:ro
+
+  strategy_factory:
+    build: { context: ./strategy_factory }
+    restart: unless-stopped
+    depends_on: [redis]
+    env_file: .env
+
+  meta_allocator:
+    build: { context: ./meta_allocator }
+    restart: unless-stopped
+    depends_on: [redis]
+    env_file: .env
+    environment:
+      - RUST_LOG=${LOG_LEVEL:-info}
+
+  executor:
+    build: { context: . }
+    restart: unless-stopped
+    depends_on: [redis, signer, meta_allocator]
+    ports: ["9184:9184"]
+    env_file: .env
+    environment:
+      - RUST_LOG=${LOG_LEVEL:-info}
+    volumes:
+      - ./shared:/app/shared
+
+  # New data consumer services (simulated for out-of-box testing)
+  bridge_consumer:
+    build: { context: ./data_consumers }
+    command: python bridge_consumer.py
+    restart: unless-stopped
+    depends_on: [redis]
+    env_file: .env
+
+  depth_consumer:
+    build: { context: ./data_consumers }
+    command: python depth_consumer.py
+    restart: unless-stopped
+    depends_on: [redis]
+    env_file: .env
+
+  funding_consumer:
+    build: { context: ./data_consumers }
+    command: python funding_consumer.py
+    restart: unless-stopped
+    depends_on: [redis]
+    env_file: .env
+
+  helius_rpc_price_consumer: # P-2: New consumer for real-time SOL/USD price
+    build: { context: ./data_consumers }
+    command: python helius_rpc_price_consumer.py
+    restart: unless-stopped
+    depends_on: [redis]
+    env_file: .env
+
+  dashboard:
+    build: { context: ./dashboard }
+    restart: unless-stopped
+    depends_on: [redis, executor]
+    ports: ["8080:5000"]
+    env_file: .env
+    volumes:
+      - ./shared:/app/shared:ro

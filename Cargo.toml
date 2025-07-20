@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "executor",
+    "signer", 
+    "meta_allocator",
+    "shared-models"
+]
+resolver = "2"
+
+[workspace.dependencies]
+shared-models = { path = "./shared-models" }

@@ -1,0 +1,2 @@
+redis==5.0.1
+requests==2.31.0 # P-2: For Helius RPC calls
