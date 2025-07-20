@@ -196,13 +196,3 @@ Recommendation: Set up billing alerts in your GCP account and monitor your API p
 ⚠️ CRITICAL WARNING & DISCLAIMER
 
 This is professional-grade, high-risk software. Its complexity and autonomy create significant risks alongside its potential advantages. Misconfiguration, bugs, or volatile market conditions can lead to rapid and total financial loss.
-
-This is not financial advice. This software is a tool for executing trading strategies. The strategies provided are for educational and illustrative purposes only and are not guaranteed to be profitable.
-
-DO NOT RUN WITH REAL MONEY until you have run the system in PAPER_TRADING_MODE for an extended period and fully understand its behavior and the risks of each individual strategy.
-
-YOU ARE SOLELY RESPONSIBLE for the security of your API keys and wallet files. The use of a dedicated, isolated signer service is a security best practice, but it does not eliminate all risks.
-
-THE STRATEGIES ARE NOT INFALLIBLE. They are based on statistical probabilities, not certainties. They can and will have losing trades. Past performance is not indicative of future results.
-
-YOU ARE THE PORTFOLIO MANAGER. The ultimate responsibility for monitoring the system, managing risk, and disabling it if it behaves unexpectedly rests with you.
