@@ -54,17 +54,19 @@ impl Strategy for MeanRevert1h {
                 let z_score = (tick.price_usd - mean) / std_dev;
                 if z_score < -self.z_score_threshold { // Buy when significantly oversold
                     info!(id = self.id(), token = %tick.token_address, "BUY signal: Price z-score {:.2} is below threshold -{:.2}", z_score, self.z_score_threshold);
-                    return Ok(StrategyAction::Buy(OrderDetails {
+                    return Ok(StrategyAction::Execute(OrderDetails {
                         token_address: tick.token_address.clone(),
                         suggested_size_usd: 400.0,
                         confidence: 0.7,
+                        side: Side::Long,
                     }));
                 } else if z_score > self.z_score_threshold { // Sell when significantly overbought
                      info!(id = self.id(), token = %tick.token_address, "SELL signal: Price z-score {:.2} is above threshold {:.2}", z_score, self.z_score_threshold);
-                     return Ok(StrategyAction::Sell(OrderDetails {
+                     return Ok(StrategyAction::Execute(OrderDetails {
                          token_address: tick.token_address.clone(),
                          suggested_size_usd: 400.0, // Amount to sell
                          confidence: 0.7,
+                         side: Side::Short,
                      }));
                 }
             }

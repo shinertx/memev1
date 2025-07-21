@@ -27,10 +27,11 @@ impl Strategy for RugPullSniffer {
             // A real rug pull sniffer would integrate with on-chain data for LP unlocks, dev wallet activity, etc.
             if tick.price_usd < 0.1 && tick.volume_usd_1m > 100_000.0 {
                  info!(id = self.id(), token = %tick.token_address, "SHORT signal: Detected potential rug pull pattern (price crash with high volume).");
-                 return Ok(StrategyAction::Short(OrderDetails {
+                 return Ok(StrategyAction::Execute(OrderDetails {
                      token_address: tick.token_address.clone(),
                      suggested_size_usd: 1000.0, // Aggressive short size
                      confidence: 0.9,
+                     side: Side::Short,
                  }));
             }
         }

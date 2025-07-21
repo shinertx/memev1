@@ -47,10 +47,11 @@ impl Strategy for KoreanTimeBurst {
                 if tick.volume_usd_1m > 50_000.0 * self.volume_multiplier_threshold && !self.active_burst_tokens.contains(&tick.token_address) {
                     info!(id = self.id(), token = %tick.token_address, "BUY signal: Detected Korean time volume burst (V: {:.0} USD).", tick.volume_usd_1m);
                     self.active_burst_tokens.insert(tick.token_address.clone());
-                    return Ok(StrategyAction::Buy(OrderDetails {
+                    return Ok(StrategyAction::Execute(OrderDetails {
                         token_address: tick.token_address.clone(),
                         suggested_size_usd: 650.0,
                         confidence: 0.7,
+                        side: Side::Long,
                     }));
                 }
             }
