@@ -12,4 +12,3 @@ anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 statrs = "0.16" # For statistical calculations (mean, std dev for Sharpe)
-statrs = "0.16" # For statistical calculations (mean, std dev for Sharpe)

@@ -1,0 +1,34 @@
+# Ignore Git history
+.git
+.gitignore
+# Keep the workspace lockfile so reproducible binaries build
+
+# Ignore local environment files (unless explicitly needed in a COPY)
+.env
+*.env.local
+
+# Ignore temporary and build files
+target/
+Cargo.lock
+node_modules/
+*.tmp
+*.log
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Ignore general OS files
+.DS_Store

@@ -1,4 +1,14 @@
-// signer/src/main.rs
+/// signer/src/main.rs
+use anyhow::{anyhow, Context, Result};
+use axum::{extract::State, http::StatusCode, routing::{get, post}, Json, Router};
+use shared_models::{SignRequest, SignResponse};
+use solana_sdk::{
+    signature::{read_keypair_file, Keypair, Signer},
+    transaction::VersionedTransaction,
+};
+use std::{env, net::SocketAddr, sync::Arc};
+use tracing::{error, info, instrument, level_filters::LevelFilter};
+use tracing_subscriber::EnvFilter;rc/main.rs
 use anyhow::{anyhow, Context, Result};
 use axum::{extract::State, http::StatusCode, routing::{get, post}, Json, Router};
 use shared_models::{SignRequest, SignResponse};

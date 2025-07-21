@@ -1,17 +1,12 @@
-use crate::{register_strategy, strategies::S                    return Ok(StrategyAction::Execute(OrderDetails {
-                        token_address: tick.token_address.clone(),
-                        suggested_size_usd: 1000.0,
-                        confidence: 0.9,
-                        side: Side::Long,
-                    }));gy};
+use crate::{register_strategy, strategies::{Strategy, MarketEvent, StrategyAction, OrderDetails, EventType}};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashSet;
 use tracing::info;
-use chrono::{Timelike, Utc};
-use shared_models::{EventType, MarketEvent, StrategyAction, OrderDetails, Side};
+use chrono::{Timelike, Utc, NaiveTime};
+use shared_models::Side; // P-5: Import Side
 
 #[derive(Default, Deserialize)]
 struct KoreanTimeBurst {
@@ -47,11 +42,11 @@ impl Strategy for KoreanTimeBurst {
                 if tick.volume_usd_1m > 50_000.0 * self.volume_multiplier_threshold && !self.active_burst_tokens.contains(&tick.token_address) {
                     info!(id = self.id(), token = %tick.token_address, "BUY signal: Detected Korean time volume burst (V: {:.0} USD).", tick.volume_usd_1m);
                     self.active_burst_tokens.insert(tick.token_address.clone());
-                    return Ok(StrategyAction::Execute(OrderDetails {
+                    return Ok(StrategyAction::Execute(OrderDetails { // P-5: Use Execute
                         token_address: tick.token_address.clone(),
                         suggested_size_usd: 650.0,
                         confidence: 0.7,
-                        side: Side::Long,
+                        side: Side::Long, // P-5: Add side
                     }));
                 }
             }

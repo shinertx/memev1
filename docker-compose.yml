@@ -1,6 +1,5 @@
-# MemeSnipe v17-Pro (Patched) - Apex Predator Docker Compose
-version: '3.8'
-
+# MemeSnipe v17-Pro (Patched) - CORRECTED & SECURE Docker Compose
+# This file uses a consistent build context for each service.
 services:
   redis:
     image: redis:7.2-alpine
@@ -16,9 +15,11 @@ services:
     restart: unless-stopped
     environment:
       - RUST_LOG=${LOG_LEVEL:-info}
-      - WALLET_KEYPAIR_PATH=/app/wallet/${WALLET_KEYPAIR_FILENAME}
-    volumes:
-      - ./${WALLET_KEYPAIR_FILENAME}:/app/wallet/${WALLET_KEYPAIR_FILENAME}:ro
+      # WALLET_KEYPAIR_PATH is set by Docker Secrets mechanism
+    secrets:
+      - wallet_json # CRITICAL: Mounts wallet via Docker secrets for security
+
+
 
   strategy_factory:
     build: { context: ./strategy_factory }
@@ -35,15 +36,22 @@ services:
       - RUST_LOG=${LOG_LEVEL:-info}
 
   executor:
-    build: { context: . }
+    build: 
+      context: . # Build from workspace root to access shared-models
+      dockerfile: executor/Dockerfile
     restart: unless-stopped
     depends_on: [redis, signer, meta_allocator]
     ports: ["9184:9184"]
     env_file: .env
     environment:
       - RUST_LOG=${LOG_LEVEL:-info}
+      - JITO_AUTH_KEYPAIR_PATH=/run/secrets/jito_auth.json # <— match file name for Jito key
+      - LIBCLANG_PATH=/usr/lib/llvm-14/lib # drift-rs needs this for build environment
     volumes:
-      - ./shared:/app/shared
+      - shared-data:/app/shared          # named volume for db + artefacts
+    secrets:
+      - jito_auth_json # Mount Jito auth key via Docker secrets
+
 
   # New data consumer services (simulated for out-of-box testing)
   bridge_consumer:
@@ -75,10 +83,21 @@ services:
     env_file: .env
 
   dashboard:
-    build: { context: ./dashboard }
+    build: { context: ., dockerfile: dashboard/Dockerfile }
     restart: unless-stopped
     depends_on: [redis, executor]
     ports: ["8080:5000"]
     env_file: .env
     volumes:
-      - ./shared:/app/shared:ro
+      - shared-data:/app/shared:ro
+
+# Docker Secrets definition (to keep sensitive files out of image layers)
+secrets:
+  wallet_json:
+    file: ./${WALLET_KEYPAIR_FILENAME}
+  jito_auth_json:
+    file: ./${JITO_AUTH_KEYPAIR_FILENAME}
+
+# Named volume for persistent data (e.g., SQLite DB)
+volumes:
+  shared-data:

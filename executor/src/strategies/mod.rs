@@ -1,8 +1,11 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
-use shared_models::{EventType, MarketEvent, StrategyAction, Side};   // Side imported
+use shared_models::{EventType, MarketEvent, StrategyAction, Side, OrderDetails};
 use std::collections::HashSet;
+
+// Re-export commonly used types for strategies
+pub use shared_models::{EventType, MarketEvent, StrategyAction, Side, OrderDetails};
 
 #[async_trait]
 pub trait Strategy: Send + Sync + 'static { // Added 'static bound

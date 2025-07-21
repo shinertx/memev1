@@ -2,10 +2,10 @@ import redis
 import json
 import time
 import os
-import requests
-import random # P-2: For Helius RPC calls
+import requests # P-2: For Helius RPC calls
+import random
 
-def get_sol_price_from_helius(api_key: str) -> float | None:
+def get_sol_price_from_helius(api_key: str):
     """Fetches the current SOL/USD price from Helius RPC."""
     url = f"https://rpc.helius.xyz/?api-key={api_key}"
     headers = {"Content-Type": "application/json"}

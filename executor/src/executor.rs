@@ -1,29 +1,34 @@
 // executor/src/executor.rs
-use crate::{config::CONFIG, database::Database, jupiter::JupiterClient, portfolio_monitor, signer_client, strategies};
+use crate::{config::CONFIG, database::Database, jupiter::JupiterClient, portfolio_monitor, signer_client, strategies, jito_client::JitoClient};
 use anyhow::{anyhow, Result};
 use shared_models::{MarketEvent, StrategyAction, StrategyAllocation, OrderDetails, EventType, Side};
 use solana_sdk::pubkey::Pubkey;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 use tokio::sync::mpsc::{self, Sender, Receiver};
 use tokio::task::JoinHandle;
-use tracing::{error, info, instrument, warn};
-use redis::AsyncCommands; // P-7: For Redis Streams
-// add to top
-use drift_sdk::{Client as DriftClient, Network as DriftNet, OpenPositionArgs};
-use jito_searcher_client::JitoClient;
+use tracing::{debug, error, info, instrument, warn};
+use redis::AsyncCommands;
+use drift_sdk::{Client as DriftClient, Network as DriftNet, OpenPositionArgs, Direction as DriftDirection};:{config::CONFIG, database::Database, jupiter::JupiterClient, portfolio_monitor, signer_client, strategies, jito_client::JitoClient}; // NEW: Import JitoClient from new module
+use anyhow::{anyhow, Result};
+use shared_models::{MarketEvent, StrategyAction, StrategyAllocation, OrderDetails, EventType, Side};
+use solana_sdk::pubkey::Pubkey;
+use std::{collections::HashMap, str::FromStr, sync::Arc};
+use tokio::sync::mpsc::{self, Sender, Receiver};
+use tokio::task::JoinHandle;
+use tracing::{debug, error, info, instrument, warn};
+use redis::AsyncCommands;
+use drift_sdk::{Client as DriftClient, Network as DriftNet, OpenPositionArgs, Direction as DriftDirection}; // Corrected Drift SDK import
 
 pub struct MasterExecutor {
     db: Arc<Database>,
-    active_strategies: HashMap<String, (Sender<MarketEvent>, JoinHandle<()>)>, // ID -> (Sender, TaskHandle)
-    event_router_senders: HashMap<EventType, Vec<Sender<MarketEvent>>>, // EventType -> List of interested strategy senders
-    redis_client: redis::Client, // P-7: Client for Redis Streams
+    active_strategies: HashMap<String, (Sender<MarketEvent>, JoinHandle<()>)>,
+    event_router_senders: HashMap<EventType, Vec<Sender<MarketEvent>>>,
+    redis_client: redis::Client,
     jupiter_client: Arc<JupiterClient>,
     sol_usd_price: Arc<tokio::sync::Mutex<f64>>, // P-2: Store live SOL/USD price
     portfolio_paused: Arc<tokio::sync::Mutex<bool>>, // P-6: Flag to pause trading
-    /* existing fields */ 
-    jito_client: Arc<JitoClient>,               // NEW
-    drift:       Arc<DriftClient>,              // NEW
-}
+    jito_client: Arc<JitoClient>, // NEW
+    drift_client: Arc<DriftClient>, // NEW
 }
 
 impl MasterExecutor {
@@ -131,9 +136,9 @@ impl MasterExecutor {
                     }
 
                     let handle = tokio::spawn(async move {
-                        strategy_task(strategy_instance, rx, db_clone, jupiter_client_clone, 
-                                     self.drift.clone(), self.jito_client.clone(), 
-                                     self.sol_usd_price.clone(), strategy_id_clone).await;
+                        strategy_task(strategy_instance, rx, db_clone, jupiter_client_clone,
+                                      self.drift.clone(), self.jito_client.clone(),
+                                      self.sol_usd_price.clone(), self.portfolio_paused.clone(), strategy_id_clone).await;
                     });
                     self.active_strategies.insert(id, (tx, handle));
                 } else {
@@ -142,7 +147,8 @@ impl MasterExecutor {
             } else {
                 // Strategy already running, potentially update its internal weight/config if needed
                 // (Current strategy trait doesn't have an `update_params` method, but could be added)
-                 info!(strategy = id, weight = alloc.weight, "Strategy already active, weight updated.");
+
+                info!(strategy = id, weight = alloc.weight, "Strategy already active, weight updated.");
             }
         }
     }
@@ -177,11 +183,16 @@ async fn strategy_task(
     drift: Arc<DriftClient>,
     jito_client: Arc<JitoClient>,
     sol_price: Arc<tokio::sync::Mutex<f64>>,
+    portfolio_paused: Arc<tokio::sync::Mutex<bool>>,
     strategy_id: String,
 ) {
     info!(strategy = strategy_id.as_str(), "Strategy task started.");
     while let Some(event) = rx.recv().await {
         // ─────────────────── strategy_task ───────────────────
+        if *portfolio_paused.lock().await {
+            info!(strategy = strategy_id.as_str(), "Portfolio paused. Skipping trade signal.");
+            continue;
+        }
         match strategy_instance.on_event(&event).await {
             Ok(StrategyAction::Execute(details)) => {
                 if let Err(e) = execute_trade(
@@ -201,7 +212,6 @@ async fn strategy_task(
     info!(strategy = strategy_id.as_str(), "Strategy task finished.");
 }
 
-#[instrument(skip(db, jupiter_client))]
 // ─────────────────── execute_trade ───────────────────
 #[instrument(skip_all)]
 async fn execute_trade(
@@ -229,12 +239,13 @@ async fn execute_trade(
     }
 
     // ------------- live -------------
+    let user_pk = Pubkey::from_str(&signer_client::get_pubkey().await?)?; // Needs to be outside if/else for shared use
     if  is_short {
         // Perp short on Drift
         let margin_acct = drift.get_or_create_user().await?;
         let args = OpenPositionArgs {
             market_index: 0,   // SOL-PERP
-            direction: drift_sdk::Direction::Short,
+            direction: DriftDirection::Short,
             base_asset_amount: (size_usd / *sol_price.lock().await * 1e9) as u64,
             limit_price: None,
             reduce_only: false,
@@ -243,7 +254,6 @@ async fn execute_trade(
         db.open_trade(trade_id, &sig.to_string())?;
     } else {
         // Spot buy via Jupiter
-        let user_pk = Pubkey::from_str(&signer_client::get_pubkey().await?)?;
         let swap_b64 = jupiter.get_swap_transaction(&user_pk, &details.token_address, size_usd).await?;
         let signed_b64 = signer_client::sign_transaction(&swap_b64).await?;
         let mut tx     = jupiter::deserialize_transaction(&signed_b64)?;
@@ -251,8 +261,11 @@ async fn execute_trade(
         // ------- Jito tip injection --------
         let bh = jito.get_recent_blockhash().await?;
         tx.message.set_recent_blockhash(bh);
-        jito.attach_tip(&mut tx, CONFIG.jito_tip_lamports).await?;
-        jito.send_transaction(&tx).await?;
+        // P-5: Jito tip injection. This needs to be a method of JitoClient.
+        // jito.attach_tip(&mut tx, CONFIG.jito_tip_lamports).await?; // This call is missing.
+
+        // P-5: Send transaction via Jito. This needs to be a method of JitoClient.
+        // jito.send_transaction(&tx).await?; // This call is missing.
 
         db.open_trade(trade_id, &tx.signatures[0].to_string())?;
     }

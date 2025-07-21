@@ -32,7 +32,7 @@ fi
 if gcloud compute instances describe "$VM_NAME" --zone="$ZONE" --quiet &>/dev/null; then
     echo "⚠️ VM '$VM_NAME' already exists. Updating code and restarting services..."
     gcloud compute scp --recurse ./* "$VM_NAME":"$REPO_DIR" --zone="$ZONE"
-    gcloud compute ssh "$VM_NAME" --zone="$ZONE" --command="cd $REPO_DIR && docker-compose down && docker-compose up -d --build"
+    gcloud compute ssh "$VM_NAME" --zone="$ZONE" --command="cd $REPO_DIR && sudo docker compose down && sudo docker compose up -d --build"
 else
     echo "🔨 Creating new VM '$VM_NAME'..."
     gcloud compute instances create "$VM_NAME" 
@@ -58,11 +58,13 @@ else
     sleep 90
     
     echo "📁 Creating repo directory and copying files..."
-    gcloud compute ssh "$VM_NAME" --zone="$ZONE" --command="mkdir -p $REPO_DIR"
-    gcloud compute scp --recurse ./* "$VM_NAME":"$REPO_DIR" --zone="$ZONE"
+    gcloud compute ssh "$VM_NAME" --zone="$ZONE" --command="sudo mkdir -p $REPO_DIR && sudo chown -R \$USER:\$USER $REPO_DIR"
+    tar -czf memev1.tar.gz ./*
+    gcloud compute scp memev1.tar.gz "$VM_NAME":$REPO_DIR/ --zone="$ZONE"
+    gcloud compute ssh "$VM_NAME" --zone="$ZONE" --command="cd $REPO_DIR && tar -xzf memev1.tar.gz"
     
     echo "🐳 Building and deploying Docker services..."
-    gcloud compute ssh "$VM_NAME" --zone="$ZONE" --command="cd $REPO_DIR && docker-compose up -d --build"
+    gcloud compute ssh "$VM_NAME" --zone="$ZONE" --command="cd $REPO_DIR && sudo docker compose up -d --build"
 fi
 
 # --- Firewall Rules ---
@@ -85,5 +87,5 @@ echo "📊 Dashboard: http://$EXTERNAL_IP:8080"
 echo "📈 Executor Metrics (Prometheus Target): http://$EXTERNAL_IP:9184"
 echo "----------------------------------------"
 echo "SSH Access: gcloud compute ssh $VM_NAME --zone=$ZONE"
-echo "View Logs: gcloud compute ssh $VM_NAME --zone=$ZONE --command='cd $REPO_DIR && docker-compose logs -f'"
+echo "View Logs: gcloud compute ssh $VM_NAME --zone=$ZONE --command='cd $REPO_DIR && sudo docker compose logs -f'"
 echo ""
