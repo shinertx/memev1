@@ -1,38 +1,31 @@
 # Stage 1: Build the application
-FROM rust:1.75-slim@sha256:e0b2b5c7e2fb0ad3f7ac44c8ed06d4694931a7201c13d8031a0e0513e9a7e939 AS builder
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential pkg-config libssl-dev clang
+FROM rust:1.77-slim as builder
 
 WORKDIR /app
 
-# ------------ dependency-cache layer -------------
-COPY ./Cargo.lock .
-COPY ./signer/Cargo.toml signer/Cargo.toml
-COPY ./shared-models/Cargo.toml shared-models/Cargo.toml
+# Create a dummy project to cache dependencies
+RUN USER=root cargo new --bin signer
+WORKDIR /app/signer
 
-# Create dummy source files for dependency build
-RUN mkdir -p signer/src shared-models/src && \
-    echo 'fn main(){}' > signer/src/main.rs && \
-    echo 'pub fn lib(){}' > shared-models/src/lib.rs
+# Copy dependency files
+COPY ./Cargo.lock ./Cargo.lock
+COPY ./signer/Cargo.toml ./Cargo.toml
+COPY ./shared-models/Cargo.toml ./shared-models/Cargo.toml
 
-RUN cargo build --release --workspace
+# Build dependencies
+RUN cargo build --release
+RUN rm src/*.rs target/release/deps/signer*
 
-# Clean up dummy files
-RUN rm signer/src/*.rs shared-models/src/*.rs
-
-# ------------ real source copy and build -------------
-COPY ./signer/src ./signer/src
+# Copy source code and build the actual application
+COPY ./signer/src ./src
 COPY ./shared-models/src ./shared-models/src
+RUN cargo build --release
 
-RUN cargo build --release --bin signer
-
-
-# --- Stage 2: Create the final, minimal image ------------------------------
+# Stage 2: Create the final, minimal image
 FROM debian:bookworm-slim
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+# Install only necessary libraries
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user for security
 RUN groupadd --system app && useradd --system --gid app app
@@ -40,6 +33,10 @@ USER app
 
 WORKDIR /app
 
-COPY --from=builder /app/target/release/signer .
+# Copy the built binary from the builder stage
+COPY --from=builder /app/signer/target/release/signer .
+
+# Create directory for wallet
+RUN mkdir -p /app/wallet
 
 CMD ["./signer"]

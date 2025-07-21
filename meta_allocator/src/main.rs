@@ -6,7 +6,6 @@ use std::time::Duration;
 use tracing::{info, warn, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
 use statrs::statistics::{Mean, StandardDeviation};
-use statrs::statistics::{Mean, StandardDeviation};
 
 #[tokio::main]
 async fn main() -> Result<()> {

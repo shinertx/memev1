@@ -9,7 +9,7 @@ WORKDIR /home/app
 COPY --chown=app:app ./dashboard/requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
-COPY --chown=app:app . .
+COPY --chown=app:app ./dashboard/ .
 
 # Add the user's .local/bin to the PATH for Flask
 ENV PATH="/home/app/.local/bin:${PATH}"

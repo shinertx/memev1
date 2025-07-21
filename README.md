@@ -288,56 +288,36 @@ airdrop_rotation	Buys tokens being actively airdropped to new holders.	OnChain
 korean_time_burst	Volume and price spike during Korean trading hours.	Price
 bridge_inflow	Detects when a token is bridged to a new chain.	Bridge
 rug_pull_sniffer	Shorts tokens with imminent LP unlocks or other red flags.	OnChain
-
 🔧 Operational Guide
+1. Deployment
 
-### 1. Prerequisites
+Deployment is handled by a single script after initial setup.
 
-Before you begin, ensure you have the following installed and configured on your local machine:
+Create Wallets:
 
-*   **Google Cloud SDK (`gcloud`)**: The script relies on `gcloud` commands to interact with your GCP account.
-    *   [Installation Guide](https://cloud.google.com/sdk/docs/install)
-    *   After installation, authenticate and set your project:
-        ```bash
-        gcloud auth login
-        gcloud config set project YOUR_PROJECT_ID
-        ```
-*   **A GCP Project**: You need an active GCP project with billing enabled to create the VM and other resources.
+Create a main trading wallet (my_wallet.json). Fund it with SOL.
 
-### 2. Initial Setup & Deployment
+Create a separate, non-funded wallet for Jito authentication (jito_auth_key.json).
 
-This process covers the initial wallet and environment configuration, followed by running the deployment script.
+Place both files in the project root.
 
-1.  **Create Wallets**:
-    *   Create a main trading wallet (e.g., `my_wallet.json`). **Fund this wallet with SOL.**
-    *   Create a separate, non-funded wallet for Jito authentication (e.g., `jito_auth_key.json`).
-    *   Place both keypair files in the project's root directory.
+Configure Environment:
 
-2.  **Configure Environment**:
-    *   Copy the example environment file: `cp .env.example .env`
-    *   Open the `.env` file and fill in all required values:
-        *   `RPC_URL`: Your Solana RPC endpoint.
-        *   `JITO_BLOCK_ENGINE_URL`: The Jito Block Engine URL.
-        *   `JITO_AUTH_KEYPAIR_FILENAME`: The filename of your Jito keypair (e.g., `jito_auth_key.json`).
-        *   `WALLET_KEYPAIR_FILENAME`: The filename of your main trading wallet (e.g., `my_wallet.json`).
-        *   `REDIS_URL`: Should be `redis://redis:6379` to connect to the Dockerized Redis instance.
+Copy .env.example to .env.
 
-3.  **Deploy to GCP**:
-    The deployment script is idempotent: it will create the VM if it doesn't exist or update the code and restart the services if it does.
-    *   **Make the script executable**:
-        ```bash
-        chmod +x ./scripts/deploy_vm_gcp.sh
-        ```
-    *   **Run the deployment script**:
-        ```bash
-        ./scripts/deploy_vm_gcp.sh
-        ```
+Fill in all required API keys and verify wallet filenames.
 
-### 3. Post-Deployment Health Checks
+Deploy to GCP:
+
+Make the deployment script executable: chmod +x ./scripts/deploy_vm_gcp.sh
+
+Run the script: ./scripts/deploy_vm_gcp.sh
+
+2. Post-Deployment Health Checks
 
 After deploying, verify that the system is running correctly:
 
-```bash
+Generated bash
 # Check that all Docker containers are up and healthy
 gcloud compute ssh meme-snipe-v17-vm --command='cd /opt/meme-snipe-v17-pro && docker-compose ps'
 
@@ -351,16 +331,23 @@ gcloud compute ssh meme-snipe-v17-vm --command='docker exec -it meme-snipe-v17-p
 
 # View the logs of the core services
 gcloud compute ssh meme-snipe-v17-vm --command='cd /opt/meme-snipe-v17-pro && docker-compose logs -f executor meta_allocator strategy_factory'
-```
-
-### 4. Switching to Live Data
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+Bash
+IGNORE_WHEN_COPYING_END
+3. Switching to Live Data
 
 The system defaults to using the built-in data simulator. To switch to real-world data feeds:
 
-*   **Implement Real Data Consumers**: Replace the placeholder logic in `data_consumers/*.py` with actual API integrations (e.g., Helius LaserStream for price/depth, Twitter/Telegram APIs for social, Helius webhooks for on-chain/bridge events, Drift API for funding rates).
-*   **Configure API Keys**: Ensure your `.env` file has all necessary API keys for these live data sources.
-*   **Disable Simulator**: In `strategy_factory/factory.py`, comment out the "Data Simulation Loop" section.
-*   **Redeploy**: Run the deployment script again to apply the changes.
+Implement Real Data Consumers: Replace the placeholder logic in data_consumers/*.py with actual API integrations (e.g., Helius LaserStream for price/depth, Twitter/Telegram APIs for social, Helius webhooks for on-chain/bridge events, Drift API for funding rates).
+
+Configure API Keys: Ensure your .env file has all necessary API keys for these live data sources.
+
+Disable Simulator: In strategy_factory/factory.py, comment out the "Data Simulation Loop" section.
+
+Redeploy: Run the deployment script again to apply the changes.
 
 💻 Strategy Development Guide (SDK)
 

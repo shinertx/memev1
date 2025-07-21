@@ -21,4 +21,3 @@ jito_auth_key.json
 # General
 .DS_Store
 /shared
-*.tar.gz

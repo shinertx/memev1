@@ -2,9 +2,8 @@
 mod config;
 mod database;
 mod executor;
-mod jito_client;
 mod jupiter;
-mod portfolio_monitor;
+mod portfolio_monitor; // P-6: New module for portfolio monitoring
 mod signer_client;
 mod strategies;
 

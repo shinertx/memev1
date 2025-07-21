@@ -1,11 +1,21 @@
-use crate::{register_strategy, strategies::{Strategy, MarketEvent, StrategyAction, OrderDetails, EventType}};
+use crate::{register_strategy, strategies::Str                          return Ok(StrategyAction::Execute(OrderDetails {
+                         token_address: tick.token_address.clone(),
+                         suggested_size_usd: 300.0,
+                         confidence: 0.65,
+                         side: Side::Short,
+                     }));          return Ok(StrategyAction::Execute(OrderDetails {
+                        token_address: tick.token_address.clone(),
+                        suggested_size_usd: 400.0,
+                        confidence: 0.6,
+                        side: Side::Long,
+                    }));};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::{HashSet, VecDeque};
 use tracing::info;
-use shared_models::Side; // P-5: Import Side
+use shared_models::{EventType, MarketEvent, StrategyAction, OrderDetails, Side};
 
 #[derive(Default, Deserialize)]
 struct MeanRevert1h {
@@ -44,19 +54,19 @@ impl Strategy for MeanRevert1h {
                 let z_score = (tick.price_usd - mean) / std_dev;
                 if z_score < -self.z_score_threshold { // Buy when significantly oversold
                     info!(id = self.id(), token = %tick.token_address, "BUY signal: Price z-score {:.2} is below threshold -{:.2}", z_score, self.z_score_threshold);
-                    return Ok(StrategyAction::Execute(OrderDetails { // P-5: Use Execute
+                    return Ok(StrategyAction::Execute(OrderDetails {
                         token_address: tick.token_address.clone(),
                         suggested_size_usd: 400.0,
                         confidence: 0.7,
-                        side: Side::Long, // P-5: Add side
+                        side: Side::Long,
                     }));
                 } else if z_score > self.z_score_threshold { // Sell when significantly overbought
                      info!(id = self.id(), token = %tick.token_address, "SELL signal: Price z-score {:.2} is above threshold {:.2}", z_score, self.z_score_threshold);
-                     return Ok(StrategyAction::Execute(OrderDetails { // P-5: Use Execute
+                     return Ok(StrategyAction::Execute(OrderDetails {
                          token_address: tick.token_address.clone(),
                          suggested_size_usd: 400.0, // Amount to sell
                          confidence: 0.7,
-                         side: Side::Short, // P-5: Add side (for closing a long or opening a short)
+                         side: Side::Short,
                      }));
                 }
             }

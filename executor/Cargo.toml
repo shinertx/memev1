@@ -22,7 +22,7 @@ url = "2.5"
 # Solana & Jito
 solana-client = "1.18"
 solana-sdk = "1.18"
-jito-searcher-client = { git = "https://github.com/jito-labs/searcher-client-rust.git", tag = "v0.4.0", features = ["ws"] } # Corrected URL to HTTPS
+jito-searcher-client = { version = "0.4", features = ["ws"] }
 
 # Database & Storage
 rusqlite = { version = "0.31", features = ["bundled", "chrono"] }
@@ -40,7 +40,10 @@ inventory = "0.1" # For strategy discovery
 rand = "0.8" # For simulated PnL
 chrono-tz = "0.8" # For Korean time strategy
 # Drift
-drift-sdk = { git = "https://github.com/drift-labs/drift-rs.git", tag = "v2.107.0" } # Corrected URL to HTTPS
+drift-sdk = { git = "https://github.com/drift-labs/drift-rs.git", tag = "v2.1.0" }
+
+[workspace]
+members = ["../shared-models"]
 
 # Optimized release profile for maximum performance
 [profile.release]
